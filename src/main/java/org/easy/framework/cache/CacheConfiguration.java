@@ -2,6 +2,7 @@ package org.easy.framework.cache;
 
 import com.alibaba.fastjson.support.spring.FastJsonRedisSerializer;
 import lombok.extern.slf4j.Slf4j;
+import org.ehcache.config.builders.CacheManagerBuilder;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.interceptor.CacheResolver;
@@ -64,15 +65,26 @@ public class CacheConfiguration {
     @Bean
     @Primary
     public CacheManager cacheManager() {
-        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig();
-        config = config.serializeKeysWith(RedisSerializationContext
-                .SerializationPair
-                .fromSerializer(new StringRedisSerializer()));
-        config = config.serializeValuesWith(RedisSerializationContext
-                .SerializationPair
-                .fromSerializer(new FastJsonRedisSerializer<>(Object.class)));
-        config.entryTtl(Duration.ofSeconds(1000*10L));
-        RedisCacheManager cacheManager = RedisCacheManager.builder(redisTemplate.getConnectionFactory()).cacheDefaults(config).build();
-        return cacheManager;
+        EasyCacheManager config = new EasyCacheManager();
+        return config;
+//        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig();
+//        config = config.serializeKeysWith(RedisSerializationContext
+//                .SerializationPair
+//                .fromSerializer(new StringRedisSerializer()));
+//        config = config.serializeValuesWith(RedisSerializationContext
+//                .SerializationPair
+//                .fromSerializer(new FastJsonRedisSerializer<>(Object.class)));
+//        config.entryTtl(Duration.ofSeconds(1000*10L));
+//        RedisCacheManager cacheManager = RedisCacheManager.builder(redisTemplate.getConnectionFactory()).cacheDefaults(config).build();
+//        return cacheManager;
     }
+
+//    @Bean
+//    public org.ehcache.CacheManager ehCacheManager(){
+//         org.ehcache.CacheManager cacheManager = CacheManagerBuilder
+//                .newCacheManagerBuilder()
+//                .build();
+//        cacheManager.init();
+//        return cacheManager;
+//    }
 }
