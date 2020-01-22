@@ -4,6 +4,8 @@ import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.easy.framework.lru.EasyLRU;
+import org.omg.CORBA.OBJ_ADAPTER;
 import org.springframework.cache.support.AbstractValueAdaptingCache;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
@@ -35,6 +37,10 @@ public class EasyCache extends AbstractValueAdaptingCache {
     private RedisTemplate<Object, Object> redisTemplate;
 
     private org.ehcache.Cache<Object, Object> ehcacheCache;
+
+    private EasyLRU<Object, Object> easyLRU;
+
+
     @Setter
     @Getter
     private String cachePrefix ="cachePrefix";
@@ -53,10 +59,16 @@ public class EasyCache extends AbstractValueAdaptingCache {
 
     protected EasyCache(boolean allowNullValues) {
         super(allowNullValues);
+//        Caffeine.newBuilder()
+//                .expireAfterWrite(1, TimeUnit.SECONDS)
+//                .expireAfterAccess(1,TimeUnit.SECONDS)
+//                .maximumSize(10)
+//                .build();
     }
 
     public EasyCache(String name, RedisTemplate<Object, Object> redisTemplate,
-                     org.ehcache.Cache<Object,Object> ehcacheCache, boolean allowNullValues) {
+                     org.ehcache.Cache<Object,Object> ehcacheCache,
+                     boolean allowNullValues) {
         super(allowNullValues);
         this.name = name;
         this.redisTemplate = redisTemplate;
@@ -160,6 +172,8 @@ public class EasyCache extends AbstractValueAdaptingCache {
 
     }
 
+    //TODO  算法实现有问题
+    @Deprecated
     @Override
     public void clear() {
 // 先清除redis中缓存数据，然后清除ehcache中的缓存，避免短时间内如果先清除ehcache缓存后其他请求会再从redis里加载到ehcache中

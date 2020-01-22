@@ -7,13 +7,18 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
+import org.easy.framework.lru.EasyLRU;
 import org.ehcache.CacheManager;
 import org.ehcache.config.CacheConfiguration;
+import org.ehcache.config.EvictionAdvisor;
 import org.ehcache.config.builders.CacheConfigurationBuilder;
 import org.ehcache.config.builders.CacheManagerBuilder;
 import org.ehcache.config.builders.ExpiryPolicyBuilder;
 import org.ehcache.config.builders.ResourcePoolsBuilder;
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
+import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
 import org.springframework.cache.Cache;
+import org.springframework.data.redis.cache.RedisCache;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.cache.RedisCacheWriter;
@@ -32,11 +37,14 @@ import java.util.concurrent.ConcurrentMap;
 /**
  * @author: Zhangtong
  * @description:
+ *               https://blog.csdn.net/byamao1/article/details/82014062
+ *               https://blog.csdn.net/Gentlemike/article/details/80403967
  * @Date: 2020/1/22.
  */
 
 //@EqualsAndHashCode(callSuper = true)
 @Slf4j
+@AutoConfigureAfter(RedisAutoConfiguration.class)
 public class EasyCacheManager implements org.springframework.cache.CacheManager {
 
 
@@ -66,7 +74,7 @@ public class EasyCacheManager implements org.springframework.cache.CacheManager 
     private boolean dynamic = true;
     @Resource
     RedisTemplate redisTemplate;
-
+    //TODO 没配置，这个有点问题
     protected RedisCacheManager createRedisCache(){
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig();
         config = config.serializeKeysWith(RedisSerializationContext
@@ -77,7 +85,7 @@ public class EasyCacheManager implements org.springframework.cache.CacheManager 
                 .fromSerializer(new FastJsonRedisSerializer<>(Object.class)));
         config.entryTtl(Duration.ofSeconds(1000*10L));
         RedisCacheManager cacheManager = RedisCacheManager.builder(redisTemplate.getConnectionFactory()).cacheDefaults(config).build();
-
+        //RedisCache rc = (RedisCache) cacheManager.getCache("");
         return cacheManager;
     }
 
@@ -103,19 +111,41 @@ public class EasyCacheManager implements org.springframework.cache.CacheManager 
     }
 
     public org.ehcache.CacheManager ehCacheManager(){
+        /*
+        ResourcePoolsBuilder
+                        .newResourcePoolsBuilder()
+                        //设置缓存堆容纳元素个数(JVM内存空间)超出个数后会存到offheap中
+                        .heap(1000L,EntryUnit.ENTRIES)
+                        //设置堆外储存大小(内存存储) 超出offheap的大小会淘汰规则被淘汰
+                        .offheap(100L, MemoryUnit.MB)
+                        // 配置磁盘持久化储存(硬盘存储)用来持久化到磁盘,这里设置为false不启用
+                        .disk(500L, MemoryUnit.MB, false)
+         */
         long ehcacheExpire = 1000;//redisEhcacheProperties.getEhcache().getExpireAfterWrite();
         this.configuration =
                 CacheConfigurationBuilder
                         .newCacheConfigurationBuilder(Object.class, Object.class,
                                 ResourcePoolsBuilder.heap(100))
-                        .withExpiry(ExpiryPolicyBuilder.timeToLiveExpiration(Duration.ofSeconds(ehcacheExpire)))
-                        .build();
 
+                        .withExpiry(ExpiryPolicyBuilder.timeToLiveExpiration(Duration.ofSeconds(ehcacheExpire)))
+//                        .withEvictionAdvisor(new LRUEvictionAdvisor())
+                        .build();
         cacheManager = CacheManagerBuilder
                 .newCacheManagerBuilder()
+                .withCache("a",configuration)
                 .build();
         cacheManager.init();
         return cacheManager;
+    }
+
+//    EasyLRU<Object,Object> lru = new EasyLRU<>();
+
+    private class LRUEvictionAdvisor implements EvictionAdvisor<Object, Object> {
+
+        @Override
+        public boolean adviseAgainstEviction(Object o, Object o2) {
+            return false;
+        }
     }
     public org.ehcache.Cache<Object, Object> getEhcache(String name){
         org.ehcache.Cache<Object, Object> res = ehCacheManager().getCache(name, Object.class, Object.class);
@@ -123,6 +153,18 @@ public class EasyCacheManager implements org.springframework.cache.CacheManager 
             return res;
         }
         return cacheManager.createCache(name, configuration);
+    }
+
+    public void clearLocal(String cacheName, Object key, Integer sender) {
+        Cache cache = cacheMap.get(cacheName);
+        if(cache == null) {
+            return ;
+        }
+        EasyCache redisEhcacheCache = (EasyCache) cache;
+        //如果是发送者本身发送的消息，就不进行key的清除
+        if(redisEhcacheCache.getLocalCache().hashCode() != sender) {
+            redisEhcacheCache.clearLocal(key);
+        }
     }
 
 

@@ -3,6 +3,10 @@ package org.easy.framework.cache;
 import com.alibaba.fastjson.support.spring.FastJsonRedisSerializer;
 import lombok.extern.slf4j.Slf4j;
 import org.ehcache.config.builders.CacheManagerBuilder;
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.interceptor.CacheResolver;
@@ -15,6 +19,8 @@ import org.springframework.core.convert.ConversionService;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.listener.ChannelTopic;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
@@ -25,13 +31,15 @@ import java.util.Arrays;
 
 /**
  * @author: Zhangtong
- * @description:
+ * @description: https://blog.csdn.net/byamao1/article/details/82014062
  * @Date: 2020/1/22.
  */
 @Slf4j
 @Primary
 @Configuration
 @EnableCaching
+@AutoConfigureAfter(RedisAutoConfiguration.class)
+@ConditionalOnProperty(name = "cache.easy", havingValue = "true", matchIfMissing = false)
 public class CacheConfiguration {
 
     @Resource
@@ -63,28 +71,20 @@ public class CacheConfiguration {
     }
 
     @Bean
+    @ConditionalOnBean(EasyCacheManager.class)
+    public RedisMessageListenerContainer redisMessageListenerContainer() {
+        RedisMessageListenerContainer redisMessageListenerContainer = new RedisMessageListenerContainer();
+        redisMessageListenerContainer.setConnectionFactory(redisTemplate.getConnectionFactory());
+        CacheMessageListener cacheMessageListener = new CacheMessageListener();
+        redisMessageListenerContainer.addMessageListener(cacheMessageListener, new ChannelTopic("redisEhcacheProperties.getRedis().getTopic()"));
+        return redisMessageListenerContainer;
+    }
+
+    @Bean
     @Primary
     public CacheManager cacheManager() {
         EasyCacheManager config = new EasyCacheManager();
         return config;
-//        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig();
-//        config = config.serializeKeysWith(RedisSerializationContext
-//                .SerializationPair
-//                .fromSerializer(new StringRedisSerializer()));
-//        config = config.serializeValuesWith(RedisSerializationContext
-//                .SerializationPair
-//                .fromSerializer(new FastJsonRedisSerializer<>(Object.class)));
-//        config.entryTtl(Duration.ofSeconds(1000*10L));
-//        RedisCacheManager cacheManager = RedisCacheManager.builder(redisTemplate.getConnectionFactory()).cacheDefaults(config).build();
-//        return cacheManager;
     }
 
-//    @Bean
-//    public org.ehcache.CacheManager ehCacheManager(){
-//         org.ehcache.CacheManager cacheManager = CacheManagerBuilder
-//                .newCacheManagerBuilder()
-//                .build();
-//        cacheManager.init();
-//        return cacheManager;
-//    }
 }
