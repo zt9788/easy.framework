@@ -66,6 +66,7 @@
     </Appenders>
 
     <Loggers>
+        <logger name="org.springframework" level="INFO"></logger>
         <Root level="info">
             <AppenderRef ref="Console"/>
         </Root>

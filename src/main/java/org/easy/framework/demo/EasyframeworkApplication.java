@@ -12,7 +12,6 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @EnableTransactionManagement(proxyTargetClass = true)
 @EnableCaching
 @ServletComponentScan
-//@SpringBootApplication(exclude={DruidDataSourceAutoConfigure.class})
 @SpringBootApplication
 @ComponentScan(basePackages = {"org.easy.framework"})
 public class EasyframeworkApplication {

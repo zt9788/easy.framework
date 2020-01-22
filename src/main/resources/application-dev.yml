@@ -47,5 +47,5 @@ logging:
 #  config: classpath*:log4j2.xml
   #logback-spring.xml
   level:
-    root: debug
+    root: info
 
