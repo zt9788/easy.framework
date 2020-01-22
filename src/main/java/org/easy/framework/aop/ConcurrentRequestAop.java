@@ -9,7 +9,9 @@ import org.aspectj.lang.annotation.*;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.aspectj.lang.reflect.SourceLocation;
 import org.easy.framework.annotation.concurrent.ConcurrentRequset;
+import org.easy.framework.exception.EasyException;
 import org.springframework.core.MethodParameter;
+import org.springframework.core.annotation.Order;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -33,6 +35,7 @@ import java.util.concurrent.TimeUnit;
  * by zhangtong
  */
 @Aspect
+@Order(0x1000000)
 @Slf4j
 @Component
 public class ConcurrentRequestAop {
@@ -139,7 +142,7 @@ public class ConcurrentRequestAop {
         }else {
             recordRuntime(request);
             if (StringUtils.isEmpty(concurrentRequset.returnObject())) {
-                throw new RuntimeException("您访问过于频繁");
+                throw new EasyException("您访问过于频繁");
 //                return new JsonResult<Object>(EnumJsonResult.MUTIL_CONNECT_ERR, null);
             }else
                 return concurrentRequset.returnObject();
